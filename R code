@@ -1,0 +1,1082 @@
+# =============================================================
+# Digital Marketing Intelligence - Assignment 02
+# Influencer Marketing Effectiveness
+# =============================================================
+# Group 2.1
+# Purpose:   Feature extraction, NLP analysis, image analysis,
+#            and regression modelling of Instagram post engagement
+# Structure:
+#   1. Data loading & merging
+#   2. Data cleaning
+#   3. Text analysis (Q1-Q7)
+#   4. Image analysis (Q8)
+#   5. Regression models (Q9-Q11)
+# =============================================================
+#importing data 
+library(readxl)
+#Chris, influencer01
+christhefreelancer_main <- read_excel("christhefreelancer/christhefreelancer.xlsx")
+christhefreelancer_col <- read_excel("christhefreelancer/christhefreelancer_color_analysis_results.xlsx")
+christhefreelancer_obj <- read_excel("christhefreelancer/christhefreelancer_detr_object_detection_results.xlsx")
+#DrewBinsky, influencer 02
+drewbinsky_main <- read_excel("drewbinsky/drewbinsky.xlsx")
+drewbinsky_col <- read_excel("drewbinsky/drewbinsky_color_analysis_results.xlsx")
+drewbinsky_obj <- read_excel("drewbinsky/drewbinsky_detr_object_detection_results.xlsx")
+#Happylostlife
+happylostlife_main <- read_excel("happylostlife/happylostlife.xlsx")
+happylostlife_col <- read_excel("happylostlife/happylostlife_color_analysis_results.xlsx")
+happylostlife_obj <- read_excel("happylostlife/happylostlife_detr_object_detection_results.xlsx")
+#Joey the nomad
+joeythenomad_main <- read_excel("joeythenomad/joeythenomad.xlsx")
+joeythenomad_col <- read_excel("joeythenomad/joeythenomad_color_analysis_results.xlsx")
+joeythenomad_obj <- read_excel("joeythenomad/joeythenomad_detr_object_detection_results.xlsx")
+#Quaid madison
+quaidmadison_main <- read_excel("Quaid_madison/quaidmadison.xlsx")
+quaidmadison_col <- read_excel("Quaid_madison/quaidmadison_color_analysis_results.xlsx")
+quaidmadison_obj <- read_excel("Quaid_madison/quaidmadison_detr_object_detection_results.xlsx")
+
+library(dplyr)
+library(janitor)
+
+#Clean column names for all datasets
+
+christhefreelancer_main <- christhefreelancer_main %>% clean_names()
+christhefreelancer_col  <- christhefreelancer_col %>% clean_names()
+christhefreelancer_obj  <- christhefreelancer_obj %>% clean_names()
+
+drewbinsky_main <- drewbinsky_main %>% clean_names()
+drewbinsky_col  <- drewbinsky_col %>% clean_names()
+drewbinsky_obj  <- drewbinsky_obj %>% clean_names()
+
+happylostlife_main <- happylostlife_main %>% clean_names()
+happylostlife_col  <- happylostlife_col %>% clean_names()
+happylostlife_obj  <- happylostlife_obj %>% clean_names()
+
+joeythenomad_main <- joeythenomad_main %>% clean_names()
+joeythenomad_col  <- joeythenomad_col %>% clean_names()
+joeythenomad_obj  <- joeythenomad_obj %>% clean_names()
+
+quaidmadison_main <- quaidmadison_main %>% clean_names()
+quaidmadison_col  <- quaidmadison_col %>% clean_names()
+quaidmadison_obj  <- quaidmadison_obj %>% clean_names()
+
+#Rename merge key so all three files use "image_name"
+
+christhefreelancer_col <- christhefreelancer_col %>%
+  rename(image_name = file_name)
+
+christhefreelancer_obj <- christhefreelancer_obj %>%
+  rename(image_name = file_name)
+
+drewbinsky_col <- drewbinsky_col %>%
+  rename(image_name = file_name)
+
+drewbinsky_obj <- drewbinsky_obj %>%
+  rename(image_name = file_name)
+
+happylostlife_col <- happylostlife_col %>%
+  rename(image_name = file_name)
+
+happylostlife_obj <- happylostlife_obj %>%
+  rename(image_name = file_name)
+
+joeythenomad_col <- joeythenomad_col %>%
+  rename(image_name = file_name)
+
+joeythenomad_obj <- joeythenomad_obj %>%
+  rename(image_name = file_name)
+
+quaidmadison_col <- quaidmadison_col %>%
+  rename(image_name = file_name)
+
+quaidmadison_obj <- quaidmadison_obj %>%
+  rename(image_name = file_name)
+
+#Merge each influencer
+
+christhefreelancer_merged <- christhefreelancer_main %>%
+  left_join(christhefreelancer_col, by = "image_name") %>%
+  left_join(christhefreelancer_obj, by = "image_name")
+
+drewbinsky_merged <- drewbinsky_main %>%
+  left_join(drewbinsky_col, by = "image_name") %>%
+  left_join(drewbinsky_obj, by = "image_name")
+
+happylostlife_merged <- happylostlife_main %>%
+  left_join(happylostlife_col, by = "image_name") %>%
+  left_join(happylostlife_obj, by = "image_name")
+
+joeythenomad_merged <- joeythenomad_main %>%
+  left_join(joeythenomad_col, by = "image_name") %>%
+  left_join(joeythenomad_obj, by = "image_name")
+
+quaidmadison_merged <- quaidmadison_main %>%
+  left_join(quaidmadison_col, by = "image_name") %>%
+  left_join(quaidmadison_obj, by = "image_name")
+
+#Add influencer label just in case
+
+christhefreelancer_merged <- christhefreelancer_merged %>%
+  mutate(influencer_id = "christhefreelancer")
+
+drewbinsky_merged <- drewbinsky_merged %>%
+  mutate(influencer_id = "drewbinsky")
+
+happylostlife_merged <- happylostlife_merged %>%
+  mutate(influencer_id = "happylostlife")
+
+joeythenomad_merged <- joeythenomad_merged %>%
+  mutate(influencer_id = "joeythenomad")
+
+quaidmadison_merged <- quaidmadison_merged %>%
+  mutate(influencer_id = "quaidmadison")
+
+#Combine all influencers into one dataset
+
+all_influencers_merged <- bind_rows(
+  christhefreelancer_merged,
+  drewbinsky_merged,
+  happylostlife_merged,
+  joeythenomad_merged,
+  quaidmadison_merged
+)
+
+library(dplyr)
+library(stringr)
+
+extract_comments <- function(x) {
+  x <- str_extract(x, "\\d+[\\d,]*\\scomments")
+  x <- str_remove(x, "\\scomments")
+  x <- str_remove_all(x, ",")
+  as.numeric(x)
+}
+
+#getting comments from metadata
+all_influencers_merged <- all_influencers_merged %>%
+  mutate(
+    comments_from_metadata = extract_comments(metadata),
+    number_of_comments = ifelse(
+      is.na(number_of_comments),
+      comments_from_metadata,
+      number_of_comments
+    )
+  ) %>%
+  select(-comments_from_metadata)
+
+#sanity check for comments
+all_influencers_merged %>%
+  group_by(influencer_id) %>%
+  summarise(
+    n_posts = n(),
+    missing_comments = sum(is.na(number_of_comments))
+  )
+
+all_influencers_merged <- all_influencers_merged %>%
+  select(-likes)
+
+#cleaning the second passed and extract time
+library(dplyr)
+library(lubridate)
+
+#Convert post date to proper datetime
+all_influencers_merged <- all_influencers_merged %>%
+  mutate(
+    date_time = dmy_hms(date_time)
+  )
+
+#Set a fixed extraction date
+extract_date <- ymd_hms("2026-03-11 00:00:00")
+
+#Replace messy extract_time and recompute elapsed time
+all_influencers_merged <- all_influencers_merged %>%
+  mutate(
+    extract_time = extract_date,
+    seconds_passed = as.numeric(difftime(extract_time, date_time, units = "secs")),
+    days_passed = seconds_passed / 86400
+  )
+
+#sanity check
+summary(all_influencers_merged$seconds_passed)
+summary(all_influencers_merged$days_passed)
+#removing duplicate column
+all_influencers_merged <- all_influencers_merged %>%
+  select(-influencer)
+
+#Fix NA
+all_influencers_merged <- all_influencers_merged %>%
+  mutate(caption = ifelse(is.na(caption), "-", caption))
+
+all_influencers_merged <- all_influencers_merged %>%
+  mutate(
+    all_label_names = ifelse(is.na(all_label_names), "none", all_label_names),
+    unique_label_names = ifelse(is.na(unique_label_names), "none", unique_label_names)
+  )
+
+colSums(is.na(all_influencers_merged))
+#Save final merged file
+write.csv(all_influencers_merged, "all_influencers_clean_final.csv", row.names = FALSE)
+
+#text analysis ----
+library(tidyverse)
+library(tidytext)
+library(wordcloud)
+library(RColorBrewer)
+library(scales)
+library(textdata)
+
+#load the cleaned data i saved earlier
+df <- read_csv("all_influencers_clean_final.csv")
+
+#make sure numbers are actually numbers, not text
+df <- df %>%
+  mutate(
+    number_of_likes    = as.numeric(number_of_likes),
+    number_of_comments = as.numeric(number_of_comments),
+    followers          = as.numeric(followers),
+    following          = as.numeric(following),
+    n_post             = as.numeric(n_post)
+  )
+
+
+# ---- Q1: descriptive stats for likes and comments ----
+#overall picture first
+engagement_stats <- df %>%
+  summarise(
+    likes_mean   = mean(number_of_likes,    na.rm = TRUE),
+    likes_median = median(number_of_likes,  na.rm = TRUE),
+    likes_sd     = sd(number_of_likes,      na.rm = TRUE),
+    likes_min    = min(number_of_likes,     na.rm = TRUE),
+    likes_max    = max(number_of_likes,     na.rm = TRUE),
+    comments_mean   = mean(number_of_comments,    na.rm = TRUE),
+    comments_median = median(number_of_comments,  na.rm = TRUE),
+    comments_sd     = sd(number_of_comments,      na.rm = TRUE),
+    comments_min    = min(number_of_comments,     na.rm = TRUE),
+    comments_max    = max(number_of_comments,     na.rm = TRUE)
+  )
+
+print(engagement_stats)
+
+#same but per influencer - more useful for comparing them
+engagement_by_influencer <- df %>%
+  group_by(influencer_id) %>%
+  summarise(
+    n_posts         = n(),
+    likes_mean      = round(mean(number_of_likes,    na.rm = TRUE), 1),
+    likes_median    = median(number_of_likes,        na.rm = TRUE),
+    likes_sd        = round(sd(number_of_likes,      na.rm = TRUE), 1),
+    comments_mean   = round(mean(number_of_comments, na.rm = TRUE), 1),
+    comments_median = median(number_of_comments,     na.rm = TRUE),
+    comments_sd     = round(sd(number_of_comments,   na.rm = TRUE), 1)
+  )
+
+print(engagement_by_influencer)
+
+#follower/following profile - each influencer only has one value so just grab first row
+influencer_profile <- df %>%
+  group_by(influencer_id) %>%
+  slice(1) %>%
+  select(influencer_id, followers, following, n_post) %>%
+  arrange(desc(followers))
+
+print(influencer_profile)
+
+#boxplot for likes - good to see who is consistent vs who has crazy outliers
+ggplot(df, aes(x = reorder(influencer_id, number_of_likes, median),
+               y = number_of_likes, fill = influencer_id)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16) +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Distribution of Likes per Influencer", x = "Influencer", y = "Likes") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave("plot_likes_boxplot.png", width = 8, height = 5)
+
+#same for comments
+ggplot(df, aes(x = reorder(influencer_id, number_of_comments, median),
+               y = number_of_comments, fill = influencer_id)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16) +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(title = "Distribution of Comments per Influencer", x = "Influencer", y = "Comments") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave("plot_comments_boxplot.png", width = 8, height = 5)
+
+
+# ---- Q2: average caption length and top 10 words ----
+#count words in each caption, "-" means empty caption so treat as 0
+df <- df %>%
+  mutate(
+    caption_clean = ifelse(caption == "-", "", caption),
+    word_count    = str_count(caption_clean, "\\S+")
+  )
+
+cat("average words per caption:", round(mean(df$word_count, na.rm = TRUE), 1), "\n")
+
+#per influencer breakdown - some might write more than others
+df %>%
+  group_by(influencer_id) %>%
+  summarise(avg_words = round(mean(word_count, na.rm = TRUE), 1)) %>%
+  arrange(desc(avg_words)) %>%
+  print()
+
+#tokenize - split each caption into one word per row so i can count them
+data("stop_words")
+
+#adding extra stopwords that show up in instagram posts but mean nothing
+custom_stops <- tibble(word = c("t.co", "https", "http", "amp", "instagram",
+                                "it's", "i'm", "don't", "i've", "it's"))
+
+words_df <- df %>%
+  select(influencer_id, caption_clean) %>%
+  unnest_tokens(word, caption_clean) %>%
+  anti_join(stop_words,   by = "word") %>%  #remove the, and, is etc
+  anti_join(custom_stops, by = "word") %>%  #remove instagram-specific noise
+  filter(!str_detect(word, "^[0-9]+$")) %>% #remove pure numbers
+  filter(nchar(word) > 2)                   #remove very short words like "ok"
+
+word_freq <- words_df %>%
+  count(word, sort = TRUE)
+
+top10_words <- head(word_freq, 10)
+print(top10_words)
+
+top10_clean <- df %>%
+  select(influencer_id, caption_clean) %>%
+  mutate(caption_clean = str_replace_all(caption_clean, "\u2019", "'")) %>%
+  unnest_tokens(word, caption_clean) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "'")) %>%
+  filter(!str_detect(word, "^[0-9]")) %>%
+  filter(!str_detect(word, "[^a-z]")) %>%
+  filter(nchar(word) > 2) %>%
+  filter(!word %in% c("t.co", "https", "http", "amp", "instagram",
+                      "time", "day", "days", "yeah", "got", "get",
+                      "just", "like", "one", "now", "ago", "lot",
+                      "also", "via", "pic", "let")) %>%
+  count(word, sort = TRUE) %>%
+  head(10)
+
+print(top10_clean)
+
+ggplot(top10_words, aes(x = reorder(word, n), y = n, fill = n)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_gradient(low = "#a8d5e2", high = "#1a6b8a") +
+  labs(title = "Top 10 Most Frequent Words Across All Captions", x = "Word", y = "Frequency") +
+  theme_minimal()
+
+ggsave("plot_top10_words.png", width = 7, height = 5)
+
+
+# rebuild clean word frequencies for the word cloud
+wordcloud_freq <- df %>%
+  select(influencer_id, caption_clean) %>%
+  mutate(caption_clean = str_replace_all(caption_clean, "\u2019", "'")) %>%
+  unnest_tokens(word, caption_clean) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "'")) %>%
+  filter(!str_detect(word, "^[0-9]")) %>%
+  filter(!str_detect(word, "[^a-z]")) %>%
+  filter(nchar(word) > 2) %>%
+  filter(!word %in% c("t.co", "https", "http", "amp", "instagram",
+                      "time", "day", "days", "yeah", "got", "get",
+                      "just", "like", "one", "now", "ago", "lot",
+                      "also", "via", "pic", "let")) %>%
+  count(word, sort = TRUE)
+
+# generate clean word cloud
+set.seed(42)
+wordcloud(
+  words        = wordcloud_freq$word,
+  freq         = wordcloud_freq$n,
+  min.freq     = 3,
+  max.words    = 100,
+  random.order = FALSE,
+  rot.per      = 0.2,
+  colors       = brewer.pal(3, "Dark2")
+)
+
+library(ggplot2)
+install.packages("treemapify")
+library(treemapify) 
+
+install.packages("treemapify")
+library(treemapify)
+
+# ---- treemap: overall word distribution ----
+treemap_data <- wordcloud_freq %>%
+  head(40)
+
+ggplot(treemap_data, aes(area = n, fill = n, label = word)) +
+  geom_treemap() +
+  geom_treemap_text(
+    colour   = "white",
+    place    = "centre",
+    size     = 15,
+    fontface = "bold"
+  ) +
+  scale_fill_gradient(low = "#c49a6c", high = "#78471c") +
+  labs(title = "Overall Word Distribution Across All Captions") +
+  theme(legend.position = "none")
+
+ggsave("plot_treemap_words.png", width = 9, height = 6, dpi = 300)
+
+#sentiment analysis with 3 lexicons ----
+#first need to tokenize again, this time keeping post_url as the id
+words_df_sentiment <- df %>%
+  select(post_url, influencer_id, caption_clean) %>%
+  unnest_tokens(word, caption_clean)
+
+#lexicon 1: AFINN - scores each word from -5 (very bad) to +5 (very good)
+afinn <- get_sentiments("afinn")
+
+afinn_scores <- words_df_sentiment %>%
+  inner_join(afinn, by = "word") %>%   #only keeps words that exist in afinn
+  group_by(post_url) %>%
+  summarise(
+    afinn_sum    = sum(value),    #total score for the post
+    afinn_mean   = mean(value),   #average score per word
+    afinn_nwords = n()            #how many afinn words were found
+  )
+
+#lexicon 2: bing - simple positive or negative label per word
+bing <- get_sentiments("bing")
+
+bing_scores <- words_df_sentiment %>%
+  inner_join(bing, by = "word") %>%
+  group_by(post_url) %>%
+  summarise(
+    bing_positive = sum(sentiment == "positive"),
+    bing_negative = sum(sentiment == "negative"),
+    bing_net      = bing_positive - bing_negative,              #positive - negative
+    bing_ratio    = bing_positive / (bing_positive + bing_negative + 0.001) #+0.001 to avoid dividing by zero
+  )
+
+#lexicon 3: NRC - 8 emotions (joy, anger, fear, trust etc.)
+#also asks to download first time
+nrc <- get_sentiments("nrc")
+
+nrc_emotions <- nrc %>%
+  filter(!sentiment %in% c("positive", "negative")) #only want the emotion labels not pos/neg
+
+nrc_scores <- words_df_sentiment %>%
+  inner_join(nrc_emotions, by = "word") %>%
+  group_by(post_url, sentiment) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = sentiment, values_from = count,
+              values_fill = 0, names_prefix = "nrc_")
+
+#merge all three back into main dataframe
+df <- df %>%
+  left_join(afinn_scores, by = "post_url") %>%
+  left_join(bing_scores,  by = "post_url") %>%
+  left_join(nrc_scores,   by = "post_url")
+
+#posts with no sentiment words get 0 not NA
+df <- df %>%
+  mutate(across(starts_with("afinn_"), ~replace_na(., 0))) %>%
+  mutate(across(starts_with("bing_"),  ~replace_na(., 0))) %>%
+  mutate(across(starts_with("nrc_"),   ~replace_na(., 0)))
+
+#quick check - afinn sentiment per influencer
+afinn_by_inf <- df %>%
+  group_by(influencer_id) %>%
+  summarise(avg_afinn = mean(afinn_mean, na.rm = TRUE))
+
+ggplot(afinn_by_inf, aes(x = reorder(influencer_id, avg_afinn),
+                         y = avg_afinn, fill = avg_afinn > 0)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_manual(values = c("TRUE" = "#2ecc71", "FALSE" = "#e74c3c")) +
+  labs(title = "Average AFINN Sentiment by Influencer", x = NULL, y = "Avg Sentiment Score") +
+  theme_minimal()
+
+ggsave("plot_afinn_sentiment.png", width = 7, height = 4)
+
+
+# ---- Q5: caption structure features ----
+#counting specific things in the raw caption text
+
+#hashtags e.g. #travel #bali
+df <- df %>%
+  mutate(n_hashtags = str_count(caption, "#\\S+"))
+
+#mentions e.g. @someuser
+df <- df %>%
+  mutate(n_mentions = str_count(caption, "@\\S+"))
+
+#question marks - does asking questions drive more comments?
+df <- df %>%
+  mutate(n_questions = str_count(caption, "\\?"))
+
+#emojis - characters outside normal ASCII range
+df <- df %>%
+  mutate(n_emojis = str_count(caption,
+                              "[\\U0001F300-\\U0001F9FF]|[\\U00002600-\\U000027FF]|[\\U0001FA00-\\U0001FAFF]"))
+
+#caption length in words (already computed above as word_count, just renaming for clarity)
+df <- df %>%
+  mutate(caption_length = word_count)
+
+#summary table per influencer
+structure_by_influencer <- df %>%
+  group_by(influencer_id) %>%
+  summarise(
+    avg_hashtags       = round(mean(n_hashtags),      2),
+    avg_mentions       = round(mean(n_mentions),      2),
+    avg_questions      = round(mean(n_questions),     2),
+    avg_emojis         = round(mean(n_emojis),        2),
+    avg_caption_length = round(mean(caption_length),  2)
+  )
+
+print(structure_by_influencer)
+
+#save after adding all text features
+write_csv(df, "df_with_text_features.csv")
+
+
+# LDA topic modeling ----
+library(topicmodels)
+library(tm)
+library(SnowballC)
+
+#tokenize again with stemming this time - "travel" and "traveling" become the same word
+custom_stops_lda <- tibble(word = c(
+  "t.co", "https", "http", "amp", "instagram", "photo",
+  "link", "bio", "check", "comment", "follow", "like",
+  "post", "share", "tag", "video", "watch", "youtube",
+  "gonna", "gotta", "gt", "lt"
+))
+
+words_lda <- df %>%
+  select(post_url, caption_clean) %>%
+  unnest_tokens(word, caption_clean) %>%
+  anti_join(stop_words,     by = "word") %>%
+  anti_join(custom_stops_lda, by = "word") %>%
+  filter(!str_detect(word, "^[0-9]+$")) %>%
+  filter(!str_detect(word, "^[^a-z]+$")) %>%
+  filter(nchar(word) > 2) %>%
+  mutate(word = wordStem(word, language = "en")) #stem: "traveling" -> "travel"
+
+#build document term matrix - rows = posts, columns = words, values = word count
+word_counts_lda <- words_lda %>%
+  count(post_url, word, sort = TRUE) %>%
+  group_by(word) %>%
+  filter(n() >= 3) %>%  #only keep words that appear in at least 3 posts
+  ungroup()
+
+dtm <- word_counts_lda %>%
+  cast_dtm(document = post_url, term = word, value = n)
+
+cat("DTM size:", nrow(dtm), "posts x", ncol(dtm), "unique words\n")
+
+#Q6: find optimal number of topics using perplexity
+#
+set.seed(42)
+perplexity_scores <- tibble(k = integer(), perplexity = double())
+
+for (k_test in 2:8) {
+  cat("testing k =", k_test, "...\n")
+  model_test <- LDA(dtm, k = k_test, method = "Gibbs",
+                    control = list(seed = 42, burnin = 500, iter = 1000, thin = 1))
+  perplexity_scores <- perplexity_scores %>%
+    add_row(k = k_test, perplexity = perplexity(model_test, dtm))
+}
+
+print(perplexity_scores)
+
+ggplot(perplexity_scores, aes(x = k, y = perplexity)) +
+  geom_line(colour = "#2c7bb6", linewidth = 1.2) +
+  geom_point(size = 3, colour = "#d7191c") +
+  scale_x_continuous(breaks = 2:8) +
+  labs(title = "LDA Perplexity by Number of Topics",
+       subtitle = "look for the elbow - where it stops dropping fast",
+       x = "k (number of topics)", y = "perplexity (lower = better)") +
+  theme_minimal()
+
+ggsave("plot_lda_perplexity.png", width = 7, height = 4)
+
+#perplexity shows elbow around 5-6 ish, running with 5 first
+k <- 5  
+
+set.seed(42)
+lda_model <- LDA(dtm, k = k, method = "Gibbs",
+                 control = list(seed = 42, burnin = 1000, iter = 2000, thin = 1))
+
+#top 20 words per topic 
+topic_words <- tidy(lda_model, matrix = "beta")
+
+top20_words <- topic_words %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 20) %>%
+  ungroup() %>%
+  arrange(topic, desc(beta))
+
+print(top20_words, n = k * 20)
+write_csv(top20_words, "lda_top20_words_per_topic.csv")
+
+#visualize top 10 words per topic
+top10_lda <- topic_words %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>%
+  ungroup() %>%
+  mutate(topic = paste("Topic", topic))
+
+ggplot(top10_lda, aes(x = reorder_within(term, beta, topic), y = beta, fill = topic)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~topic, scales = "free_y") +
+  coord_flip() +
+  scale_x_reordered() +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Top 10 Words per LDA Topic", x = NULL, y = "Word Probability (beta)") +
+  theme_minimal() +
+  theme(strip.text = element_text(face = "bold"))
+
+ggsave("plot_lda_topics.png", width = 12, height = 7)
+
+
+#Deciding on topic names
+topic_names <- tibble(
+  topic = 1:k,
+  topic_name = c(
+    "Topic 1: Van Life & Road Trips",
+    "Topic 2: Outdoor Adventure & Hiking",
+    "Topic 3: City & Cultural Travel",
+    "Topic 4: Digital Nomad Lifestyle",
+    "Topic 5: Country Visits & Personal Stories"
+  )
+)
+
+#Q7: topic probabilities per post (gamma = how much each post belongs to each topic)
+post_topics <- tidy(lda_model, matrix = "gamma")
+
+#which topic is most dominant in each post
+dominant_topic <- post_topics %>%
+  group_by(document) %>%
+  slice_max(gamma, n = 1) %>%
+  ungroup() %>%
+  rename(post_url = document, dominant_topic = topic, dominant_gamma = gamma)
+
+#wide format so each topic probability is its own column
+gamma_wide <- post_topics %>%
+  pivot_wider(names_from = topic, values_from = gamma, names_prefix = "topic_prob_") %>%
+  rename(post_url = document)
+
+#merge back in
+df <- df %>%
+  left_join(gamma_wide,     by = "post_url") %>%
+  left_join(dominant_topic, by = "post_url") %>%
+  left_join(topic_names,    by = c("dominant_topic" = "topic"))
+
+#save everything before the regression
+write_csv(df, "df_with_all_features.csv")
+cat("saved df_with_all_features.csv -", ncol(df), "columns now\n")
+
+
+# ---- task 5: regression - what actually drives engagement ----
+
+#Q9: need to normalize the engagement variables first
+#log transform because likes/comments are very skewed (a few posts have way more than others)
+df <- df %>%
+  mutate(
+    log_likes    = log(number_of_likes    + 1),  #+1 so posts with 0 likes dont become -Inf
+    log_comments = log(number_of_comments + 1)
+  )
+
+#also need to control for how long the post has been up - older posts have more time to get likes
+#days_passed is already in the data from assignment02_dmi
+
+#model 1: likes ~ text features + image features + days_passed
+model_likes <- lm(
+  log_likes ~
+    #caption structure features
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    #sentiment
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    #image features - already in the data from scraping
+    brightness + saturation + brightness_contrast + warmth +
+    total_detected_objects +
+    #control
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_likes)
+
+#model 2: same but for comments
+model_comments <- lm(
+  log_comments ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    brightness + saturation + brightness_contrast + warmth +
+    total_detected_objects +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_comments)
+#further object analysis to check type of objects that drives engagement
+
+library(tidyr)
+
+# split the object labels into individual rows and count them
+df <- df %>%
+  mutate(
+    person_present = as.integer(str_detect(all_label_names, "\\bperson\\b"))
+  )
+
+object_freq <- df %>%
+  select(post_url, all_label_names, number_of_likes, number_of_comments) %>%
+  filter(all_label_names != "none") %>%
+  mutate(all_label_names = str_split(all_label_names, ",\\s*")) %>%
+  unnest(all_label_names) %>%
+  mutate(all_label_names = str_trim(all_label_names)) %>%
+  filter(all_label_names != "") %>%
+  count(all_label_names, sort = TRUE)
+
+print(object_freq, n = 30)
+
+# average likes per object type
+object_engagement <- df %>%
+  select(post_url, all_label_names, number_of_likes, number_of_comments) %>%
+  filter(all_label_names != "none") %>%
+  mutate(all_label_names = str_split(all_label_names, ",\\s*")) %>%
+  unnest(all_label_names) %>%
+  mutate(all_label_names = str_trim(all_label_names)) %>%
+  filter(all_label_names != "") %>%
+  group_by(all_label_names) %>%
+  summarise(
+    n_posts      = n(),
+    avg_likes    = round(mean(number_of_likes,    na.rm = TRUE), 0),
+    avg_comments = round(mean(number_of_comments, na.rm = TRUE), 0)
+  ) %>%
+  filter(n_posts >= 5) %>%  # only keep objects that appear in at least 5 posts
+  arrange(desc(avg_likes))
+
+print(object_engagement, n = 30)
+
+# create dummy variables for each object type
+object_dummies <- df %>%
+  select(post_url, all_label_names) %>%
+  filter(all_label_names != "none") %>%
+  mutate(all_label_names = str_split(all_label_names, ",\\s*")) %>%
+  unnest(all_label_names) %>%
+  mutate(
+    all_label_names = str_trim(all_label_names),
+    present = 1L  # use integer instead of double
+  ) %>%
+  filter(all_label_names != "") %>%
+  group_by(all_label_names) %>%
+  filter(n() >= 5) %>%
+  ungroup() %>%
+  distinct(post_url, all_label_names, .keep_all = TRUE) %>%  # remove duplicates first
+  pivot_wider(
+    names_from  = all_label_names,
+    values_from = present,
+    values_fill = 0L  # integer fill
+  ) %>%
+  clean_names()
+
+# merge with main dataset
+df_objects <- df %>%
+  left_join(object_dummies, by = "post_url") %>%
+  mutate(across(where(is.numeric), ~replace_na(., 0)))
+
+# regression
+model_objects <- lm(
+  log_likes ~
+    person + boat + backpack + umbrella + chair +
+    surfboard + car + kite + cup + cell_phone +
+    bird + clock + bench + laptop + potted_plant +
+    wine_glass + traffic_light + dining_table +
+    truck + vase + bowl + skis +
+    days_passed + log(followers + 1),
+  data = df_objects
+)
+
+summary(model_objects)
+
+# compare average likes with vs without person in image
+person_summary <- df %>%
+  mutate(person_label = ifelse(person_present == 1, "Person present", "No person")) %>%
+  group_by(person_label) %>%
+  summarise(
+    n_posts      = n(),
+    avg_likes    = round(mean(number_of_likes,    na.rm = TRUE), 0),
+    avg_comments = round(mean(number_of_comments, na.rm = TRUE), 0)
+  )
+
+print(person_summary)
+
+ggplot(person_summary, aes(x = person_label, y = avg_likes, fill = person_label)) +
+  geom_col(show.legend = FALSE, width = 0.5) +
+  scale_fill_manual(values = c("Person present" = "#2c7bb6", "No person" = "#b0c4de")) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Does a Person in the Image Drive More Likes?",
+    x     = NULL,
+    y     = "Average Likes"
+  ) +
+  theme_minimal()
+
+ggsave("plot_person_presence_vs_likes.png", width = 6, height = 4)
+
+#Q11: check for non-linear effects - does more of something help up to a point then hurt?
+#adding squared terms for the continuous variables that seem important
+model_likes_nonlinear <- lm(
+  log_likes ~
+    n_hashtags + I(n_hashtags^2) +          #maybe too many hashtags hurts?
+    n_emojis   + I(n_emojis^2) +            #same for emojis
+    caption_length + I(caption_length^2) +  #too long = people stop reading?
+    afinn_mean + bing_net +
+    brightness + saturation + brightness_contrast + warmth +
+    total_detected_objects +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_likes_nonlinear)
+
+#visualize non-linear effect of hashtags on likes 
+#shows predicted likes across different hashtag counts holding everything else constant
+hashtag_range <- data.frame(
+  n_hashtags         = seq(0, 30, by = 1),
+  n_emojis           = mean(df$n_emojis,           na.rm = TRUE),
+  caption_length     = mean(df$caption_length,     na.rm = TRUE),
+  afinn_mean         = mean(df$afinn_mean,          na.rm = TRUE),
+  bing_net           = mean(df$bing_net,            na.rm = TRUE),
+  brightness         = mean(df$brightness,          na.rm = TRUE),
+  saturation         = mean(df$saturation,          na.rm = TRUE),
+  brightness_contrast = mean(df$brightness_contrast, na.rm = TRUE),
+  warmth             = mean(df$warmth,              na.rm = TRUE),
+  total_detected_objects = mean(df$total_detected_objects, na.rm = TRUE),
+  days_passed        = mean(df$days_passed,         na.rm = TRUE),
+  followers          = mean(df$followers,           na.rm = TRUE)
+)
+
+hashtag_range$predicted_log_likes <- predict(model_likes_nonlinear, newdata = hashtag_range)
+
+ggplot(hashtag_range, aes(x = n_hashtags, y = predicted_log_likes)) +
+  geom_line(colour = "#2c7bb6", linewidth = 1.3) +
+  labs(title = "Non-linear effect of hashtags on likes",
+       subtitle = "all other variables held at their mean",
+       x = "Number of Hashtags", y = "Predicted Log(Likes)") +
+  theme_minimal()
+
+ggsave("plot_nonlinear_hashtags.png", width = 7, height = 4)
+
+#same plot for emojis
+emoji_range <- data.frame(
+  n_hashtags         = mean(df$n_hashtags,          na.rm = TRUE),
+  n_emojis           = seq(0, 20, by = 1),
+  caption_length     = mean(df$caption_length,      na.rm = TRUE),
+  afinn_mean         = mean(df$afinn_mean,           na.rm = TRUE),
+  bing_net           = mean(df$bing_net,             na.rm = TRUE),
+  brightness         = mean(df$brightness,           na.rm = TRUE),
+  saturation         = mean(df$saturation,           na.rm = TRUE),
+  brightness_contrast = mean(df$brightness_contrast, na.rm = TRUE),
+  warmth             = mean(df$warmth,               na.rm = TRUE),
+  total_detected_objects = mean(df$total_detected_objects, na.rm = TRUE),
+  days_passed        = mean(df$days_passed,          na.rm = TRUE),
+  followers          = mean(df$followers,            na.rm = TRUE)
+)
+
+emoji_range$predicted_log_likes <- predict(model_likes_nonlinear, newdata = emoji_range)
+
+ggplot(emoji_range, aes(x = n_emojis, y = predicted_log_likes)) +
+  geom_line(colour = "#e67e22", linewidth = 1.3) +
+  labs(title = "Non-linear effect of emojis on likes",
+       subtitle = "all other variables held at their mean",
+       x = "Number of Emojis", y = "Predicted Log(Likes)") +
+  theme_minimal()
+
+ggsave("plot_nonlinear_emojis.png", width = 7, height = 4)
+
+model_likes_interaction <- lm(
+  log_likes ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    brightness + saturation + brightness:saturation +  # <-- interaction added
+    brightness_contrast + warmth +
+    total_detected_objects +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_likes_interaction)
+
+model_likes_interaction2 <- lm(
+  log_likes ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    n_questions:afinn_mean +  # <-- new interaction
+    brightness + saturation +
+    brightness_contrast + warmth +
+    total_detected_objects +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_likes_interaction2)
+
+model_likes_interaction3 <- lm(
+  log_likes ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    brightness + saturation +
+    afinn_mean:brightness +  # <-- text x image interaction
+    brightness_contrast + warmth +
+    total_detected_objects +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_likes_interaction3)
+#sanity check on final dataset
+cat("final dataset:", nrow(df), "rows,", ncol(df), "columns\n")
+colSums(is.na(df))
+
+
+# this part is just to print output / summary for the slide
+df %>%
+  group_by(influencer_id) %>%
+  summarise(
+    followers       = first(followers),
+    following       = first(following),
+    avg_likes       = round(mean(number_of_likes, na.rm = TRUE), 0),
+    median_likes    = round(median(number_of_likes, na.rm = TRUE), 0),
+    avg_comments    = round(mean(number_of_comments, na.rm = TRUE), 0),
+    median_comments = round(median(number_of_comments, na.rm = TRUE), 0)
+  ) %>%
+  arrange(desc(followers)) %>%
+  print()
+
+# sentiment by influencer
+df %>%
+  group_by(influencer_id) %>%
+  summarise(
+    avg_afinn        = round(mean(afinn_mean,        na.rm = TRUE), 2),
+    avg_bing_net     = round(mean(bing_net,           na.rm = TRUE), 2),
+    avg_joy          = round(mean(nrc_joy,            na.rm = TRUE), 2),
+    avg_trust        = round(mean(nrc_trust,          na.rm = TRUE), 2),
+    avg_anticipation = round(mean(nrc_anticipation,   na.rm = TRUE), 2)
+  ) %>%
+  print()
+
+# caption structure by influencer
+df %>%
+  group_by(influencer_id) %>%
+  summarise(
+    avg_hashtags  = round(mean(n_hashtags,  na.rm = TRUE), 1),
+    avg_mentions  = round(mean(n_mentions,  na.rm = TRUE), 1),
+    avg_emojis    = round(mean(n_emojis,    na.rm = TRUE), 1),
+    avg_questions = round(mean(n_questions, na.rm = TRUE), 1)
+  ) %>%
+  print()
+
+# keep only one row per post - the one with the highest topic probability
+df <- df %>%
+  group_by(post_url) %>%
+  slice_max(dominant_gamma, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# verify
+cat("rows after fix:", nrow(df), "\n")
+cat("unique posts:", n_distinct(df$post_url), "\n")
+
+# re-run log transform on clean data
+df <- df %>%
+  mutate(
+    log_likes    = log(number_of_likes    + 1),
+    log_comments = log(number_of_comments + 1)
+  )
+
+# re-run both models
+model_likes <- lm(
+  log_likes ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    brightness + saturation + brightness_contrast + warmth +
+    total_detected_objects +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+model_comments <- lm(
+  log_comments ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    brightness + saturation + brightness_contrast + warmth +
+    total_detected_objects +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_likes)
+summary(model_comments)
+
+df_objects <- df %>%
+  left_join(object_dummies, by = "post_url") %>%
+  mutate(across(where(is.numeric), ~replace_na(., 0)))
+
+model_objects <- lm(
+  log_likes ~
+    person + boat + backpack + umbrella + chair +
+    surfboard + car + kite + cup + cell_phone +
+    bird + clock + bench + laptop + potted_plant +
+    wine_glass + traffic_light + dining_table +
+    truck + vase + bowl + skis +
+    days_passed + log(followers + 1),
+  data = df_objects
+)
+
+summary(model_objects)
+
+# regression with topic probabilities added
+model_likes_topics <- lm(
+  log_likes ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    brightness + saturation + brightness_contrast + warmth +
+    total_detected_objects +
+    topic_prob_1 + topic_prob_2 + topic_prob_3 + topic_prob_4 +
+    # topic_prob_5 excluded as reference category to avoid multicollinearity
+    days_passed + log(followers + 1),
+  data = df
+)
+
+model_comments_topics <- lm(
+  log_comments ~
+    n_hashtags + n_mentions + n_emojis + n_questions + caption_length +
+    afinn_mean + bing_net + nrc_joy + nrc_trust + nrc_anticipation +
+    brightness + saturation + brightness_contrast + warmth +
+    total_detected_objects +
+    topic_prob_1 + topic_prob_2 + topic_prob_3 + topic_prob_4 +
+    days_passed + log(followers + 1),
+  data = df
+)
+
+summary(model_likes_topics)
+summary(model_comments_topics)
+
+# how many posts per topic
+topic_dist <- df %>%
+  count(topic_name) %>%
+  mutate(pct = round(n / sum(n) * 100, 1)) %>%
+  arrange(desc(n))
+
+print(topic_dist)
+
+# topic distribution per influencer
+topic_by_influencer <- df %>%
+  group_by(influencer_id, topic_name) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(influencer_id) %>%
+  mutate(pct = round(n / sum(n) * 100, 1)) %>%
+  arrange(influencer_id, desc(pct))
+
+print(topic_by_influencer)
+
