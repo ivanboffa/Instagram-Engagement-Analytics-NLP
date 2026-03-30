@@ -23,11 +23,10 @@ The end-to-end pipeline was built in **R**, leveraging text and image data:
 
 ## 🚀 Key Data Science Insights
 * **Visuals Do the Heavy Lifting**: Image Brightness ($\beta = +1.17$) and Saturation ($\beta = +0.79$) strongly drive likes. 
-Human presence in the frame increases likes by **2.76x**. [cite: 4159, 4160]
-  **Hashtags Kill Conversation**: Counterintuitively, every additional hashtag significantly *reduces* comment engagement ($\beta = -0.163$), acting as a signal of low authenticity. [cite: 4226, 4322]
-  **The "Digital Nomad" Premium**: LDA Topic Modeling revealed that posts clustered around the "Digital Nomad / Laptop Lifestyle" topic drove significantly more likes ($\beta = +5.58$) compared to pure "Outdoor Adventure" content, identifying a clear content gap. [cite: 4247, 4260]
-**Authenticity > Positivity**: Overtly positive sentiment (AFINN) and question marks in captions actively hurt engagement, suggesting audiences reward raw storytelling over curated ad copy. [cite: 4312, 4335]
-
+Human presence in the frame increases likes by **2.76x**.
+  **Hashtags Kill Conversation**: Counterintuitively, every additional hashtag significantly *reduces* comment engagement ($\beta = -0.163$), acting as a signal of low authenticity. 
+  **The "Digital Nomad" Premium**: LDA Topic Modeling revealed that posts clustered around the "Digital Nomad / Laptop Lifestyle" topic drove significantly more likes ($\beta = +5.58$) compared to pure "Outdoor Adventure" content, identifying a clear content gap. 
+**Authenticity > Positivity**: Overtly positive sentiment (AFINN) and question marks in captions actively hurt engagement, suggesting audiences reward raw storytelling over curated ad copy.
 ## 💡 Strategic Recommendations
 Based on the regression outputs, the influencer playbook was optimized to:
 1. Prioritize bright, high-saturation outdoor imagery with the influencer always in-frame.
