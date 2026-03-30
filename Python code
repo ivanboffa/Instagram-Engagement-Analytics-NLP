@@ -41,11 +41,11 @@ def scrape_instagram_profiles(influencer_urls, posts_needed=50):
     # Accept Cookies
     try:
         decline_cookies = WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Decline optional cookies')]"))
+            EC.element_to_be_clickable((By.XPATH, "//button[normalize-space()='Decline optional cookies' or contains(., 'Decline optional cookies')]"))
         )
         decline_cookies.click()
     except TimeoutException:
-        pass
+        print("Cookie banner not shown (or selector changed).")
 
     # Login
     username = WebDriverWait(driver, 30).until(
@@ -61,7 +61,24 @@ def scrape_instagram_profiles(influencer_urls, posts_needed=50):
     username.send_keys("xxx") 
     password.send_keys("xxx") 
     password.send_keys(Keys.RETURN)
-    time.sleep(5)
+    time.sleep(10)
+
+    # Handle "Not Now" popups
+    try: 
+        not_now_button = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.XPATH, '//div[@role="button" and text()="Not now"]')) 
+        )
+        not_now_button.click() 
+    except TimeoutException: 
+        pass
+
+    try:
+        not_now_button2 = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.XPATH, '//button[text()="Not Now"]'))
+        )
+        not_now_button2.click()
+    except TimeoutException:
+        pass
 
     data = []
     save_dir = os.path.join(os.getcwd(), "scrapping_dmi")
@@ -93,71 +110,128 @@ def scrape_instagram_profiles(influencer_urls, posts_needed=50):
             if len(anchors) == before:
                 stale_rounds += 1
                 if stale_rounds >= 5:
+                    print("No new posts loading after several scrolls (possible throttling).")
                     break
             else:
                 stale_rounds = 0
 
         anchors = anchors[:posts_needed]
+        print(f"Found {len(anchors)} links for {influencer_url}")
         
         # Extract data for each post
         for index, a in enumerate(anchors):
             driver.get(a)
-            time.sleep(5)
+            time.sleep(10)
             
+            # Get Date and Time
+            try:
+                datetime_element = driver.find_element(By.XPATH, '//time[contains(@class, "x1p4m5qa")]') 
+                date_time = datetime_element.get_attribute('datetime')
+                if date_time:
+                    date_time = date_time.replace('Z', '')
+            except Exception:
+                date_time = "Not found"
+
             # Get Metadata
             try:
                 metadata_element = driver.find_element(By.XPATH, '//meta[@name="description"]')
                 metadata = metadata_element.get_attribute('content')
-            except:
+            except Exception:
                 metadata = "Not found"
                 
-            # Download Image
+            # Download Image via Open Graph
             try:
                 og_img = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "meta[property='og:image']"))
                 )
                 image_url = og_img.get_attribute("content")
+                
+                if any(row.get("Image URL") == image_url for row in data):
+                    continue
+                    
                 image_name = f"{influencer_name}_image_{index}.jpg"
                 image_save_as = os.path.join(save_dir, image_name)
                 
                 img_data = requests.get(image_url, timeout=20).content
                 with open(image_save_as, "wb") as f:
                     f.write(img_data)
-            except:
+            except Exception as e:
                 image_url, image_name = "Not found", "Not found"
 
             data.append({
                 'Influencer': influencer_name,
                 'Post URL': a,
                 'Image Name': image_name,
+                'Date Time': date_time,
                 'Metadata': metadata,
                 'Image URL': image_url
             })
 
     driver.quit()
     df = pd.DataFrame(data)
+    df['Date Time'] = pd.to_datetime(df['Date Time'], errors='coerce').dt.tz_localize(None)
+    df = df.sort_values(by='Date Time', ascending=False)
     df.to_excel('scrapping_dmi.xlsx', index=False)
     return df
 
 # =============================================================================
 # 2. METADATA PARSING (PANDAS)
 # =============================================================================
+def convert_to_number(value):
+    if pd.isna(value) or not isinstance(value, str): return None
+    value = value.replace(",", "").strip()
+    if value.lower() == "not found": return None
+    try:
+        if "K" in value.upper(): return float(value.upper().replace("K", "")) * 1000
+        elif "M" in value.upper(): return float(value.upper().replace("M", "")) * 1000000
+        else: return float(value)
+    except ValueError: return None
+
+def get_likes_manual(metadata):
+    if not isinstance(metadata, str): return None
+    idx_likes = metadata.lower().find("likes")
+    if idx_likes == -1: return None
+    raw_likes = metadata[:idx_likes].strip()
+    raw_likes = raw_likes.split()[-1] if raw_likes.split() else raw_likes
+    return convert_to_number(raw_likes)
+
+def get_comments_manual(metadata):
+    if not isinstance(metadata, str): return None
+    idx_comma = metadata.find(',')
+    if idx_comma == -1: return None
+    idx_comments = metadata.lower().find("comments", idx_comma + 1)
+    if idx_comments == -1: return None
+    raw_substring = metadata[idx_comma + 1: idx_comments].strip().upper().replace(",", "")
+    multiplier = 1
+    if 'K' in raw_substring:
+        multiplier = 1000
+        raw_substring = raw_substring.replace('K', '')
+    elif 'M' in raw_substring:
+        multiplier = 1000000
+        raw_substring = raw_substring.replace('M', '')
+    try: return int(float(raw_substring.strip()) * multiplier)
+    except ValueError: return None
+
+def get_caption_manual(metadata):
+    if not isinstance(metadata, str): return None
+    start_idx = metadata.find(': "')
+    if start_idx == -1: return None
+    start_quote = start_idx + len(': "')
+    end_quote = metadata.find('"', start_quote)
+    if end_quote == -1: return None
+    return metadata[start_quote:end_quote].strip()
+
 def parse_metadata(file_path="scrapping_dmi.xlsx"):
     df = pd.read_excel(file_path)
     
-    def extract_likes(meta):
-        if pd.isna(meta): return None
-        m = re.search(r"([\d.,]+(?:\.\d+)?\s*[KM]?)\s+likes", meta, flags=re.IGNORECASE)
-        if m:
-            val = m.group(1).replace(" ", "").replace(",", "").upper()
-            if 'K' in val: return float(val.replace('K','')) * 1000
-            if 'M' in val: return float(val.replace('M','')) * 1000000
-            return float(val)
-        return None
+    def extract_all(x):
+        return pd.Series([get_likes_manual(x), get_comments_manual(x), get_caption_manual(x)])
 
-    df["Number of Likes"] = df["Metadata"].apply(extract_likes)
+    df[["Number of Likes", "Number of Comments", "Caption"]] = df["Metadata"].apply(extract_all)
+    df["Number of Comments"] = df["Number of Comments"].astype('float', errors='ignore')
+    
     df.to_excel(file_path, index=False)
-    print("Metadata parsing complete.")
+    print("Metadata parsing complete. Likes, Comments, and Captions extracted.")
 
 # =============================================================================
 # 3. COMPUTER VISION: COLOR ANALYSIS (OPENCV)
@@ -191,17 +265,19 @@ def batch_color_analysis(folder_path='scrapping_dmi', output_excel='color_analys
             })
         except Exception as e:
             print(e)
+    
     pd.DataFrame(results).to_excel(os.path.join(folder_path, output_excel), index=False)
+    print(f"Color analysis saved to: {output_excel}")
 
 # =============================================================================
 # 4. COMPUTER VISION: OBJECT DETECTION (HUGGING FACE DETR)
 # =============================================================================
-def batch_object_detection(folder_path='scrapping_dmi', output_excel='detr_results.xlsx'):
+def batch_object_detection(folder_path='scrapping_dmi', output_excel='detr_object_detection_results.xlsx'):
     model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
     processor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50")
     config = model.config
     
-    image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg'))]
+    image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
     results = []
     
     for img_file in image_files:
@@ -211,7 +287,7 @@ def batch_object_detection(folder_path='scrapping_dmi', output_excel='detr_resul
         outputs = model(**inputs)
         
         probas = outputs.logits.softmax(-1)[0, :, :-1]
-        keep = probas.max(-1).values > 0.75
+        keep = probas.max(-1).values >= 0.75
         labels = probas.max(-1).indices[keep]
         
         label_names = [config.id2label[label.item()] for label in labels]
@@ -222,9 +298,28 @@ def batch_object_detection(folder_path='scrapping_dmi', output_excel='detr_resul
             "Total Detected Objects": len(label_names),
             "Number of Unique Objects": len(unique_objects),
             "All Label Names": ", ".join(label_names),
+            "Unique Label Names": ", ".join(unique_objects)
         })
         
     pd.DataFrame(results).to_excel(os.path.join(folder_path, output_excel), index=False)
+    print(f"Object detection results saved to: {output_excel}")
 
+# =============================================================================
+# MAIN EXECUTION
+# =============================================================================
 if __name__ == "__main__":
-    print("Script ready. Call functions to execute pipeline.")
+    print("Script ready. Call the functions below to execute the pipeline.")
+    
+    # EXAMPLE USAGE (Uncomment to run):
+    
+    # 1. Scrape Profiles
+    # scrape_instagram_profiles(["https://www.instagram.com/joeythenomad/"])
+    
+    # 2. Parse Metadata
+    # parse_metadata()
+    
+    # 3. Analyze Colors
+    # batch_color_analysis()
+    
+    # 4. Detect Objects
+    # batch_object_detection()
